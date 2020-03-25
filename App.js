@@ -1,5 +1,5 @@
 import React, { Component } from "react";
-import { Platform, Text, View, StyleSheet } from "react-native";
+import { Platform, Text, View, StyleSheet, Button } from "react-native";
 import Constants from "expo-constants";
 import * as Location from "expo-location";
 import * as Permissions from "expo-permissions";
@@ -7,7 +7,8 @@ import * as Permissions from "expo-permissions";
 export default class App extends Component {
   state = {
     location: null,
-    errorMessage: null
+    errorMessage: null,
+    isTracking: false
   };
 
   constructor(props) {
@@ -17,8 +18,6 @@ export default class App extends Component {
         errorMessage:
           "Oops, this will not work on Sketch in an Android emulator. Try it on your device!"
       });
-    } else {
-      this._getLocationAsync();
     }
   }
 
@@ -30,8 +29,18 @@ export default class App extends Component {
       });
     }
 
-    let location = await Location.getCurrentPositionAsync({});
-    this.setState({ location });
+    if (this.state.isTracking) {
+      this.setState({
+        location: null,
+        isTracking: false
+      });
+    } else {
+      let location = await Location.getCurrentPositionAsync({});
+      this.setState({
+        location: location,
+        isTracking: true
+      });
+    }
   };
 
   render() {
@@ -45,6 +54,11 @@ export default class App extends Component {
     return (
       <View style={styles.container}>
         <Text style={styles.paragraph}>{text}</Text>
+        <Button
+          style={styles.button}
+          title={this.state.isTracking ? "Stop tracking" : "Start tracking"}
+          onPress={() => this._getLocationAsync()}
+        />
       </View>
     );
   }
@@ -62,5 +76,8 @@ const styles = StyleSheet.create({
     margin: 24,
     fontSize: 18,
     textAlign: "center"
+  },
+  button: {
+    backgroundColor: "blue"
   }
 });
