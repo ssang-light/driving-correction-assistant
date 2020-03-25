@@ -4,9 +4,18 @@ import Constants from "expo-constants";
 import * as Location from "expo-location";
 import * as Permissions from "expo-permissions";
 
+const GEOLOCATION_OPTIONS = {
+  enableHighAccuracy: true,
+  timeInterval: 10,
+  distanceInterval: 20
+};
+
+let locationList = [];
+
 export default class App extends Component {
   state = {
-    location: null,
+    subscription: null,
+    currentLocation: null,
     errorMessage: null,
     isTracking: false
   };
@@ -21,34 +30,44 @@ export default class App extends Component {
     }
   }
 
-  _getLocationAsync = async () => {
+  _stopTracking = async () => {
+    this.state.subscription.remove();
+    this.setState({
+      currentLocation: null,
+      subscription: null,
+      isTracking: false
+    });
+    console.log(locationList);
+  };
+
+  _watchLocationAsync = async () => {
     let { status } = await Permissions.askAsync(Permissions.LOCATION);
     if (status !== "granted") {
       this.setState({
         errorMessage: "Permission to access location was denied"
       });
     }
-
-    if (this.state.isTracking) {
-      this.setState({
-        location: null,
-        isTracking: false
-      });
-    } else {
-      let location = await Location.getCurrentPositionAsync({});
-      this.setState({
-        location: location,
-        isTracking: true
-      });
-    }
+    this.setState({
+      isTracking: true
+    });
+    let subscription = await Location.watchPositionAsync(
+      GEOLOCATION_OPTIONS,
+      location => {
+        this.setState({
+          currentLocation: location
+        });
+        locationList.push(location);
+      }
+    );
+    this.setState({ subscription });
   };
 
   render() {
     let text = "Waiting..";
     if (this.state.errorMessage) {
       text = this.state.errorMessage;
-    } else if (this.state.location) {
-      text = JSON.stringify(this.state.location);
+    } else if (this.state.currentLocation) {
+      text = JSON.stringify(this.state.currentLocation);
     }
 
     return (
@@ -57,7 +76,11 @@ export default class App extends Component {
         <Button
           style={styles.button}
           title={this.state.isTracking ? "Stop tracking" : "Start tracking"}
-          onPress={() => this._getLocationAsync()}
+          onPress={
+            this.state.isTracking
+              ? () => this._stopTracking()
+              : () => this._watchLocationAsync()
+          }
         />
       </View>
     );
